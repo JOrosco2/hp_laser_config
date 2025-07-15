@@ -1,0 +1,19 @@
+{
+    "TEC":2200,
+    "LASER1_PLR":50,
+    "LASER2_PLR":50,
+    "RDCO":25,
+    "LASER1_MODE":1,
+    "LASER2_MODE":1,
+    "LASER1_IRANGE":1,
+    "LASER2_IRANGE":1,
+    "LASER1_POW": 0,
+    "LASER2_POW": 0,
+    "LASER1_STATE": 0,
+    "LASER2_STATE": 0,
+    "LASER1_REG_DELAY_COMP": 7,
+    "LASER2_REG_DELAY_COMP": 7,
+    "LASER1_OFFSET_COMP": 1,
+    "LASER2_OFFSET_COMP": 1
+
+}
