@@ -1,5 +1,6 @@
 {
-    "TEC":2200,
+    "LASER1_TEC":2200,
+    "LASER2_TEC":2200,
     "LASER1_PLR":50,
     "LASER2_PLR":50,
     "RDCO":25,
