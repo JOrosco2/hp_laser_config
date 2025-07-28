@@ -1,4 +1,5 @@
 pyvisa
+pyserial
 santec-lab-instruments @ git+https://github.com/JOrosco2/santec-lab-instruments
 opm-plugins @ git+https://github.com/JOrosco2/opm-plugins
 debug_cable_plugins @ git+https://github.com/JOrosco2/debug_cable_plugins

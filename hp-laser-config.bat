@@ -41,9 +41,8 @@ echo [*] Installing dependencies...
 python -m pip install --upgrade pip
 pip install --force-reinstall --no-cache-dir -r requirements.txt
 
-
 REM Step 5: Run the test app
 echo [*] Launching HP Laser Config Test App...
-python hp_laser_config.py
+python main.py
 
 pause
