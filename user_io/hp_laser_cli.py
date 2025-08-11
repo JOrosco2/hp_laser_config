@@ -1,16 +1,21 @@
 import logic.validation as check
+import logging
 
 """
 hp_laser_cli.py - python file which contains all user prompts and outputs
 """
+
+logger=logging.getLogger(__name__)
+
 def display_menu(unit_sn=123456):
     resp = 0
     print(f"Laser Configuration Menu (Current SN={unit_sn}):")
     print("1. Initialize Driver Board")
-    print("2. Configure Laser")
-    print("3. Run Stability")
-    print("4. Update Serial Number")
-    print("5. Exit")
+    print("2. Run TEC Stability Test")
+    print("3. Configure Laser")
+    print("4. Run Stability")
+    print("5. Update Serial Number")
+    print("6. Exit")
     while True:
         try:
             resp = int(input("Please select which process you would like to run: "))
@@ -90,18 +95,19 @@ def get_laser_channel():
 
 def print_config_info(sn="12345",wvl=1550.00,op=1.0,max=1.0,pow=1.0,ch=1,type=0):
     #prints the enterd config info for the user to verify. Prompts to enter a selection.
-    print(f"\nLaser Configuration Info:")
-    print(f"1. SN: {sn}")
-    print(f"2. Wavelength: {wvl} nm")
-    print(f"3. Operating Current: {op} mA")
-    print(f"4. Max Current: {max} mA")
-    print(f"5. Nominal Power: {pow} mW")
-    print(f"6. Channel: {ch}")
-    print(f"7. Type: {check.get_laser_type_name(type)}")
-    choice = input("Press ENTER if these values are correct, otherwise select which value to update: ")
-    if choice in ["1", "2", "3", "4", "5", "6", "7"]:
-        return True, int(choice)
-    return False, 0
+    while True:
+        logger.info(f"\nLaser Configuration Info:")
+        logger.info(f"1. SN: {sn}")
+        logger.info(f"2. Wavelength: {wvl} nm")
+        logger.info(f"3. Operating Current: {op} mA")
+        logger.info(f"4. Max Current: {max} mA")
+        logger.info(f"5. Nominal Power: {pow} mW")
+        logger.info(f"6. Channel: {ch}")
+        logger.info(f"7. Type: {check.get_laser_type_name(type)}")
+        choice = input("Press ENTER if these values are correct, otherwise select which value to update: ")
+        if check.validate_laser_config_update(choice):
+            return (True, int(choice)) if choice is not "" else (False,0)
+        logger.info(f"ERROR! Invalid choice, please enter a valid option!")
 
 function_dict = {
     "laser_sn": (get_laser_sn,()),
@@ -135,18 +141,46 @@ def _verify_config_info(user_input=None):
 def get_config_info():
     #Prompts user to enter laser and unit information. returns a dictionary of inputs to caller.
     user_input = {
-        "laser_sn":"12345",
-        "laser_wvl":1550.00,
-        "laser_op_current":1.0,
-        "laser_max_current":1.0,
-        "laser_power_mw":1.0,
-        "laser_power_dbm":0.0,
-        "laser_channel":1,
-        "laser_type":0
+        "Laser_SN":"12345",
+        "Laser_Wavelength":1550.00,
+        "Laser_OP_Current":1.0,
+        "Laser_Max_Current":1.0,
+        "Laser_Power":1.0,
+        "Laser_Power_DB":0.0,
+        "Laser_Channel":1,
+        "Laser_Type":0
     }
     for key, (func,params) in function_dict.items():
         user_input[f"{key}"]=func(*params)
     _verify_config_info(user_input)
     return user_input
+
+def setup_tec_test():
+    #Prompts the user to get the unit ready for a tec stability test
+    logger.info(f"Readying TEC Stability Test:")
+    num_ch=0
+    input(f"Please ensure the laser driver board is powered OFF (press ENTER when done): ")
+    input(f"Please connect the DAQ-TEC connectors are connected to the driver board (press ENTER when done): ")
+    input(f"Please connect the laser carrier board to the laser driver board (press ENTER when done): ")
+    num_ch=int(get_number(f"Please enter the number of TECs that are being tested: "))
+    input(f"Please power on the board, confirm the TEC light is green (press ENTER when the light has turned green): ")
+    return num_ch
+
+def setup_configure_laser():
+    #prompts for the user to get ready to set the power on the laser
+    logger.info(f"Readying to configure laser:")
+    print(f"Please perform the following:")
+    if ask_yes_no("Is the laser board currently connected to the driver board?"):
+        input(f"1. Ensure the board is powered on (press ENTER when done)")
+    else:
+        input(f"1. Ensure the board is powered off (press ENTER when done)")
+        input(f"2. Connect the Laser carrier board (press ENTER when done)")
+        input(f"3. Power on the unit (press ENTER when done)")
+        input(f"4. Verify the board has reconnected (usb beep) AND that the TEC LED is green (IF TEC LED REMAINS RED POWER OFF UNIT AND CONTACT ENGINEERING) (press ENTER when done)")
+
+    #get laser info
+    config_info = get_config_info()
+
+    return config_info
 
 
