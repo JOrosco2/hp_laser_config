@@ -4,7 +4,7 @@ from logic.validation import check_overcurrent
 from hp_laser_decorator import auto_connect_instruments
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 """
 config_apc_laser.py - python script which handles configuring a laser in constant power mode (APC).
@@ -16,106 +16,127 @@ class APCLaserContext:
     logger: any
     laser_driver: Laser_Driver_API
     laser_channel: int = 1
+    laser_max_current: float = 1.0
     power_margin: float = 0.5
     max_plr: int = 255
-    power_levels: list[int] = [1,100,255]
+    power_levels: list = field(default_factory=list)
 
+class APCLaserConfig:
+    def __init__(self,opm=None,logger=None):
+        self.hw=opm
+        self.ctx = None
+        self.logger = logger or logging.getLogger(__name__)
 
-#Sets the channel and wavelength of the OPM
-def setup_opm(opm=None,wvl=1550.00):
-    while True:
-        try:
-            channel = int(input(f"Please enter the OPM Channel: "))
-            opm.set_opm_channel(channel-1)
-            break
-        except ValueError:
-            print(f"Error! Invalid input, please enter a valid OPM channel...")
-    opm.set_wavelength(wvl)
+    def _ensure_ctx(self):
+        if not self.ctx or not self.ctx.laser_driver:
+            raise RuntimeError("APC Laser context is not initialized. Please contact engineering!")
 
-#checks the board status to see if the laser at channel has an overcurrent detected
-def _check_overcurrent_status(ctx:APCLaserContext,retry_count=2):
-    i = 0
-    #The module board has a tendency to report an overcurrent if there is a current spike when the laser
-    #is enabled. Typically reading board status again will clear the error. 
-    while i < retry_count:
-        if not check_overcurrent(ctx.laser_driver.get_board_status(),ctx.laser_channel):
-            return False
-    return True 
+    @auto_connect_instruments(required=["opm"])
+    def _check_hardware(self,opm=None):
+        if opm is not None and self.hw is None:
+            self.hw = opm #attach the debug_cable from the decorator
+        if self.hw is None:
+            raise RuntimeError("No debug cable available for writing")
+        
+    #Sets the channel and wavelength of the OPM
+    def setup_opm(self,wvl=1550.00):
+        self._check_hardware(opm=None)
+        while True:
+            try:
+                channel = int(input(f"Please enter the OPM Channel: "))
+                self.hw.set_opm_channel(channel)
+                break
+            except ValueError:
+                print(f"Error! Invalid input, please enter a valid OPM channel...")
+        self.hw.set_wavelength(wvl)
 
-#Perform power ramp on laser (increment in steps to ensure safety)
-@auto_connect_instruments(required=["opm"])
-def ramp_laser_power(ctx:APCLaserContext,opm=None):
-    for i in ctx.power_levels:
-        ctx.laser_driver.set_laser_power(ctx.laser_channel,i)
-        #make sure laser is enabled after setting power
-        ctx.laser_driver.set_laser_state(ctx.laser_channel,1)
-        ctx.logger.info(f"Setting laser power to {i} and enabling laser")
-        time.sleep(2)
-        ctx.logger.info(f"Checking board status....")
-        if _check_overcurrent_status(ctx,retry_count=2):
-            ctx.logger.info(f"Overcurrent detected on Channel:{ctx.laser_channel}, please contact engineering")
-            return -1
-        current_power = opm.read_power()
-        ctx.logger.info(f"Output power is {current_power}")
-    return 1
+    #checks the board status to see if the laser at channel has an overcurrent detected
+    def _check_overcurrent_status(self,retry_count=2):
+        i = 0
+        #The module board has a tendency to report an overcurrent if there is a current spike when the laser
+        #is enabled. Typically reading board status again will clear the error. 
+        while i < retry_count:
+            if not check_overcurrent(self.ctx.laser_driver.get_board_status(),self.ctx.laser_channel):
+                return False
+            i+=1
+        return True 
 
-#Ramp the driver board's PLR value to achieve nominal laser power
-@auto_connect_instruments(required=["opm"])
-def ramp_plr(ctx:APCLaserContext,opm=None,target_power=-80.0):
-    #Get the current OPM power
-    current_power = opm.read_power()
-    retry = 2
+    #Perform power ramp on laser (increment in steps to ensure safety)
+    def ramp_laser_power(self):
+        #Make sure there's an OPM to measure with and that laser parameters have been properly set
+        self._check_hardware(opm=None)
+        self._ensure_ctx()
+        for i in self.ctx.power_levels:
+            self.ctx.laser_driver.set_laser_power(self.ctx.laser_channel,i)
+            #make sure laser is enabled after setting power
+            self.ctx.laser_driver.set_laser_state(self.ctx.laser_channel,1)
+            self.ctx.logger.info(f"Setting laser power to {i} and enabling laser")
+            time.sleep(2)
+            self.ctx.logger.info(f"Checking board status....")
+            if self._check_overcurrent_status(retry_count=2):
+                self.ctx.logger.info(f"Overcurrent detected on Channel:{self.ctx.laser_channel}, please contact engineering")
+                return -1
+            current_power = self.hw.read_power()
+            self.ctx.logger.info(f"Output power is {current_power}")
+        return 1
 
-    #Get the current PLR from the driver board
-    current_plr = Laser_Driver_API.read_register(reg="LASER1_PLR") if ctx.laser_channel == 1 else Laser_Driver_API.read_register(reg="LASER2_PLR")
+    #Ramp the driver board's PLR value to achieve nominal laser power
+    def ramp_plr(self,target_power=-80.0):
+        #Make sure there's an OPM to measure with and that laser parameters have been properly set
+        self._check_hardware(opm=None)
+        self._ensure_ctx()
+        #Get the current OPM power
+        current_power = self.hw.read_power()
+        retry = 2
 
-    while current_power < (target_power):
-        current_plr += 1
-        if current_power > ctx.max_plr:
-            ctx.logger.info(f"MAX PLR VALUE REACHED, LASER OUTPUT POWER NOT AT {target_power}, PLEASE CONTACT ENGINEERING")
-            return -1
-        ctx.logger.info(f"Setting PLR to {current_plr}")
-        Laser_Driver_API.set_plr(ctx.laser_channel,current_plr)
-        Laser_Driver_API.set_laser_state(ctx.laser_channel,1)
-        time.sleep(2)
-        current_power = opm.read_power()
-        ctx.logger.info(f"PLR = {current_plr}, Output Power = {current_power}")
+        #Get the current PLR from the driver board
+        current_plr = self.ctx.laser_driver.read_register(reg="LASER1_PLR") if self.ctx.laser_channel == 1 else self.ctx.laser_driver.read_register(reg="LASER2_PLR")
 
+        while current_power < (target_power):
+            current_plr += 1
+            if current_power > self.ctx.max_plr:
+                self.ctx.logger.info(f"MAX PLR VALUE REACHED, LASER OUTPUT POWER NOT AT {target_power}, PLEASE CONTACT ENGINEERING")
+                return -1
+            self.ctx.logger.info(f"Setting PLR to {current_plr}")
+            self.ctx.laser_driver.set_plr(self.ctx.laser_channel,current_plr)
+            self.ctx.laser_driver.set_laser_state(self.ctx.laser_channel,1)
+            self.ctx.laser_driver.save_values(self.ctx.laser_channel)
+            time.sleep(2)
+            current_power = self.hw.read_power()
+            self.ctx.logger.info(f"PLR = {current_plr}, Output Power = {current_power}")
 
-#configure_apc_laser - sets the current limit on the driver board, does an inital power ramp (at plr=0) to ensure laser safety, then 
-#ramps the plr up until laser power reaches nominal power.
-@auto_connect_instruments(required=["opm"])
-def configure_apc_laser(laser_setup:LaserConfig,opm=None):
-
-    current_power = 0.0
-    current_plr = 0
-
-    logger=logging.getLogger(__name__)
-    laser_driver = Laser_Driver_API(logger=logger)
-
-    #Setup the config script context
-    ctx = APCLaserContext(
-        logger=logger,
-        laser_driver=laser_driver,
-        laser_channel=laser_setup.Laser_Channel,
-        power_margin=0.5,
-        max_plr=255,
-        power_levels=[1,100,255]
+        self.ctx.logger.info(f"Nominal output power reached! PLR: {current_plr} Output Power: {current_power}")
+        return 1
+    
+    #configure_apc_laser - sets the current limit on the driver board, does an inital power ramp (at plr=0) to ensure laser safety, then 
+    #ramps the plr up until laser power reaches nominal power.
+    def configure_apc_laser(self,laser_setup:LaserConfig):
+        
+        #Setup the config script context
+        self.ctx = APCLaserContext(
+            logger=self.logger,
+            laser_driver=Laser_Driver_API(logger=self.logger),
+            laser_channel=laser_setup.laser_channel,
+            power_margin=0.5,
+            laser_max_current=laser_setup.laser_max_current,
+            max_plr=255,
+            power_levels=[1,100,255]
         )
 
-    #Configure the opm
-    setup_opm(opm,laser_setup.Laser_Wavelength)
+        #Configure the opm
+        self.setup_opm()
     
-    #Set the current limit on the driver board
-    ctx.laser_driver.set_current_limit(laser_setup.Laser_Channel,laser_setup.Laser_Max_Current)
+        #Set the current limit on the driver board
+        self.ctx.laser_driver.set_current_limit(self.ctx.laser_channel,self.ctx.laser_max_current)
 
-    #Turn on the laser, step up the laser power 
-    ramp_laser_power(ctx,opm)
+        #Turn on the laser, step up the laser power 
+        self.ramp_laser_power()
 
-    #Ramp the plr from 0 to max, checking if power level has reached nominal power
-    #use the opm reading from the previous for loop.
-    target_power = laser_setup.Laser_Power_DB + ctx.power_margin
-    ramp_plr(ctx,opm,target_power)
+        #Ramp the plr from 0 to max, checking if power level has reached nominal power
+        #use the opm reading from the previous for loop.
+        target_power = laser_setup.laser_power_db + self.ctx.power_margin
+        plr_ramp_status = self.ramp_plr(target_power)
+        return plr_ramp_status > 0
 
    
 

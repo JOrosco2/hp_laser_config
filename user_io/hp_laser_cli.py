@@ -11,11 +11,10 @@ def display_menu(unit_sn=123456):
     resp = 0
     print(f"Laser Configuration Menu (Current SN={unit_sn}):")
     print("1. Initialize Driver Board")
-    print("2. Run TEC Stability Test")
-    print("3. Configure Laser")
-    print("4. Run Stability")
-    print("5. Update Serial Number")
-    print("6. Exit")
+    print("2. Configure Laser")
+    print("3. Run Stability")
+    print("4. Update Serial Number")
+    print("5. Exit")
     while True:
         try:
             resp = int(input("Please select which process you would like to run: "))
@@ -141,17 +140,17 @@ def _verify_config_info(user_input=None):
 def get_config_info():
     #Prompts user to enter laser and unit information. returns a dictionary of inputs to caller.
     user_input = {
-        "Laser_SN":"12345",
-        "Laser_Wavelength":1550.00,
-        "Laser_OP_Current":1.0,
-        "Laser_Max_Current":1.0,
-        "Laser_Power":1.0,
-        "Laser_Power_DB":0.0,
-        "Laser_Channel":1,
-        "Laser_Type":0
+        "laser_sn":"12345",
+        "laser_wvl":1550.00,
+        "laser_op_current":1.0,
+        "laser_max_current":1.0,
+        "laser_power_mw":1.0,
+        "laser_power_db":0.0,
+        "laser_channel":1,
+        "laser_type":0
     }
     for key, (func,params) in function_dict.items():
-        user_input[f"{key}"]=func(*params)
+        user_input[f"{key}"]=(func(*params))
     _verify_config_info(user_input)
     return user_input
 

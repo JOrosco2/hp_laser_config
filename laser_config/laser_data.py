@@ -2,11 +2,11 @@ from dataclasses import dataclass
 
 @dataclass
 class LaserConfig:
-    Laser_SN:str 
-    Laser_Wavelength:float
-    Laser_OP_Current:float 
-    Laser_Max_Current:float
-    Laser_Power:float
-    Laser_Power_DB:float
-    Laser_Channel:int
-    Laser_Type:int
+    laser_sn:str 
+    laser_wvl:float
+    laser_op_current:float 
+    laser_max_current:float
+    laser_power_mw:float
+    laser_power_db:float
+    laser_channel:int
+    laser_type:int

@@ -2,9 +2,11 @@ import user_io.hp_laser_cli as io
 from user_io.unit_info_data import UnitInfo
 import logging
 import os
+import math
 from datetime import datetime
 from laser_config.config_driver_board import initialize_driver_board
 from tec_config.config_tec import run_tec_stability
+from laser_config.config_apc_laser import APCLaserConfig
 from laser_config.laser_data import LaserConfig
 
 PRODUCT_VERSION = 1.0        
@@ -70,23 +72,28 @@ def main():
         if resp == 1:
             #initialize the driver board
             init_status = initialize_driver_board()
-            log_str = "Driver board initialization - PASS!" if init_status else "Driver board initialization - FAIL"
+            log_str = "Driver board initialization - PASS!" if init_status else "\n*********Driver board initialization - FAIL*********\n*********PLEASE CONTACT ENGINEREING*********\n"
             logger.info(log_str)
-        elif resp == 2:
+        elif resp == -1:
             #run the TEC stability test
             num_tec=io.setup_tec_test()
             init_status = run_tec_stability(num_tec)
-            log_str = "TEC Stability - PASS!" if init_status else "TEC Stability - FAIL!"
+            log_str = "TEC Stability - PASS!" if init_status else "\n*********TEC Stability - FAIL!*********\n*********PLEASE CONTACT ENGINEREING*********\n"
             logger.info(log_str)
-        elif resp == 3:
+        elif resp == 2:
             #configure the laser
             laser_info = io.setup_configure_laser()
+            #update laser_power db
+            laser_info["laser_power_db"] = 10*math.log10(laser_info["laser_power_mw"])
             logger.info(laser_info)
             laser_config = LaserConfig(**laser_info)
-        elif resp == 4:
+            apc_config=APCLaserConfig()
+            plr_status = apc_config.configure_apc_laser(laser_setup=laser_config)
+            log_str = "Laser Configuration - PASS" if plr_status else "\n*********Laser Configuration - FAIL!*********\n*********PLEASE CONTACT ENGINEREING*********\n"
+        elif resp == 3:
             #user has changed serial number, so change logger
             logger,unit_sn=setup_logging()
-        elif resp == 6:
+        elif resp == 4:
             #quit
             logger.info(f"*********************HP LASER CONFIG Script Complete*********************\n")
             break

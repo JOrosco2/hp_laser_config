@@ -1,5 +1,5 @@
 def validate_menu_selection(selection:int):
-    return selection in (1,2,3,4,5,6)
+    return selection in (1,2,3,4,5)
 
 def validate_laser_type(selection:int):
     return selection in (1,2)

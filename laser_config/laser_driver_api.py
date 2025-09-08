@@ -28,6 +28,8 @@ class Laser_Driver_API:
             "LASER2_ILIM":self.config.laser_config.laser2.ilim,
             "LASER1_REG_DELAY_COMP":self.config.laser_config.laser1.reg_delay_comp,
             "LASER2_REG_DELAY_COMP":self.config.laser_config.laser2.reg_delay_comp,
+            "LASER1_EXT_CI_CAP":self.config.laser_config.laser1.ext_ci_cap,
+            "LASER2_EXT_CI_CAP":self.config.laser_config.laser2.ext_ci_cap,
             "LASER1_OFFSET_COMP":self.config.laser_config.laser1.offset_comp,
             "LASER2_OFFSET_COMP":self.config.laser_config.laser2.offset_comp,
             "LASER1_STATE":self.config.laser_config.laser1.state,
@@ -95,7 +97,7 @@ class Laser_Driver_API:
     def set_current_limit(self,ch:int,max_current:float):
         #receives the max laser current. Sets the limit.
         self._check_hardware(debug_cable=None)
-        ilimit,mode = (int((245.0//980.00)*max_current),1) if max_current > 115.00 else (int((245.0//110.25)*max_current),0)
+        ilimit,mode = (int((245.0//980.00)*max_current),0) if max_current > 115.00 else (int((245.0//110.25)*max_current),1)
         reg_map,reg_val = self._build_register_value("LASER1_ILIM",ilimit) if ch == 1 else self._build_register_value("LASER2_ILIM",ilimit)
         self.logger.info(f"Setting ILIMIT to {ilimit} | {reg_map.register} : {reg_val}")
         self._write_command(reg_map.register,reg_val)

@@ -16,6 +16,7 @@ class LaserChannelConfig:
     pow: int = 0
     state: int = 0
     reg_delay_comp: int = 7
+    ext_ci_cap: int = 0
     offset_comp: int = 1
 
 #define the structure of the driver chip configuraiton (two laser channels channels, rdco value shared)
@@ -51,6 +52,8 @@ class CommandTable:
         "LASER2_REG_DELAY_COMP": RegisterMap("src.hp.regcomp",0x01,8),
         "LASER1_OFFSET_COMP": RegisterMap("src.hp.offsetcomp",0x00,8),
         "LASER2_OFFSET_COMP": RegisterMap("src.hp.offsetcomp",0x01,8),
+        "LASER1_EXT_CI_CAP":RegisterMap("src.hp.extci",0x00,8),
+        "LASER2_EXT_CI_CAP":RegisterMap("src.hp.extci",0x01,8),
         "LASER1_STATE": RegisterMap("src.state[0]",0x00,8),
         "LASER2_STATE": RegisterMap("src.state[1]",0x01,8),
         "LASER1_POW": RegisterMap("src.power[0]",0x00,8),
