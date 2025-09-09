@@ -124,7 +124,7 @@ class APCLaserConfig:
         )
 
         #Configure the opm
-        self.setup_opm()
+        self.setup_opm(laser_setup.laser_wvl)
     
         #Set the current limit on the driver board
         self.ctx.laser_driver.set_current_limit(self.ctx.laser_channel,self.ctx.laser_max_current)
