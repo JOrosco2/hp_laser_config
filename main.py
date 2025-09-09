@@ -91,9 +91,12 @@ def main():
             plr_status = apc_config.configure_apc_laser(laser_setup=laser_config)
             log_str = "Laser Configuration - PASS" if plr_status else "\n*********Laser Configuration - FAIL!*********\n*********PLEASE CONTACT ENGINEREING*********\n"
         elif resp == 3:
+            #user wants to run stability (program later)
+            pass
+        elif resp == 4:
             #user has changed serial number, so change logger
             logger,unit_sn=setup_logging()
-        elif resp == 4:
+        elif resp == 5:
             #quit
             logger.info(f"*********************HP LASER CONFIG Script Complete*********************\n")
             break
