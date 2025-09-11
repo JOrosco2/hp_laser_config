@@ -106,6 +106,9 @@ class APCLaserConfig:
             self.ctx.logger.info(f"PLR = {current_plr}, Output Power = {current_power}")
 
         self.ctx.logger.info(f"Nominal output power reached! PLR: {current_plr} Output Power: {current_power}")
+        self.ctx.logger.info(f"Setting laser state to OFF...")
+        self.ctx.laser_driver.set_laser_state(self.ctx.laser_channel,0)
+        self.ctx.laser_driver.save_values(self.ctx.laser_channel)
         return 1
     
     #configure_apc_laser - sets the current limit on the driver board, does an inital power ramp (at plr=0) to ensure laser safety, then 
